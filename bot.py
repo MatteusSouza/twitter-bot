@@ -103,7 +103,7 @@ async def retweetTweetsList(api, retweet_time_interval):
             try:
                 api.retweet(tweets_to_retweet['id'])
                 retweets_list.append(tt)
-                logging.info(f"{index} ... {retweet_time_interval} seconds interval ... Last Retweet: {tweets_to_retweet[0]['id']}")
+                logging.info(f"{index} ... {retweet_time_interval} seconds interval ... Last Retweet: {tt['id']}")
                 await asyncio.sleep(retweet_time_interval)
             except Exception as e:
                 logging.error(e)
