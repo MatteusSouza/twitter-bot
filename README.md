@@ -1,4 +1,4 @@
-English | [Portuguese](README_ptbr.md)
+English | [Portuguese](/.readme/pt/README.md)
 
 ## How to configure
 
