@@ -2,6 +2,7 @@ import asyncio
 import logging
 import auth
 import timeformat
+from tweetmodel import tweetModel
 
 global tweets_list
 global retweets_list
@@ -49,22 +50,6 @@ def searchRecentTweets(client,term_to_search,results_num,start_time):
         logging.error("Response error: {e}")
     return response
 
-def tweetModel(response_data):
-    item = response_data
-    tweet = {
-        "id": item.id,
-        "text": item.text,
-        "authorId": item.author_id,
-        "conversationId": item.conversation_id,
-        "createdAt": item.created_at,
-        "inReplyToUserId": item.in_reply_to_user_id,
-        "lang": item.lang,
-        "possiblySensitive": item.possibly_sensitive,
-        "referencedTweets": item.referenced_tweets,
-        "source": item.source
-    }
-    return tweet
-
 async def addToList(client, term_to_search, results_num, start_time, search_time_interval):
     """Iterar response, adicionar cada tweet na lista"""
     logging.info("addToList Started")
@@ -77,11 +62,12 @@ async def addToList(client, term_to_search, results_num, start_time, search_time
             
             if retweets_list == []:
                 for item in response.data:
-                    tweet = tweetModel(item)
                     try:
+                        tweet = tweetModel(item)
                         tweets_list.append(tweet)
                     except Exception as e:
                         logging.error(e)
+                        
             else:
                 for item in response.data:
                     tweet = tweetModel(item)
@@ -107,9 +93,18 @@ async def retweetTweetsList(api, retweet_time_interval):
     tweets_list.clear()
 
     for index, tweet in enumerate(tweets_to_retweet):
-        retweets_list.append(tweet)
-        logging.info(f"{index} ... {retweet_time_interval} seconds interval ... Last Retweet: {tweet['id']}")
-        await asyncio.sleep(retweet_time_interval)
+        try:
+            api.retweet(tweet['id'])
+            retweets_list.append(tweet)
+            logging.info(f"{index} ... {retweet_time_interval} seconds interval ... Last Retweet: {tweet['id']}")
+            await asyncio.sleep(retweet_time_interval)
+        except Exception as e:
+            logging.error(e)
+            try:
+                retweets_list.append(tweet)
+            except Exception as e:
+                logging.error(e)
+        
     
     logging.info(f"tweetsList {len(tweets_list)}")
     logging.info(f'tweets_to_retweet: {len(tweets_to_retweet)}')
@@ -148,7 +143,7 @@ def main():
     logConfig()
     api = auth.api_v1_oauth1()
     client = auth.api_v2_oauth2()
-    term_to_search = "#bbb"
+    term_to_search = "@vagasDevRJ"
     results_num = 100
     clearRetweetsListHour = 3
     start_time = timeformat.setTime(lastMinute=15)
