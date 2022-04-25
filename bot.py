@@ -7,9 +7,11 @@ from time import sleep
 
 global tweets_list
 global retweets_list
+global exclusion_list
 
 tweets_list = []
 retweets_list = []
+exclusion_list = []
 
 async def tweetsListObserver(func, observer_time_interval):
     logging.info("tweetsListObserver Started")
@@ -68,7 +70,8 @@ async def addToList(client, term_to_search, results_num, start_time, search_time
                 for item in response.data:
                     try:
                         tweet = tweetModel(item)
-                        tweets_list.append(tweet)
+                        if tweet['authorId'] not in exclusion_list:
+                            tweets_list.append(tweet)
                     except Exception as e:
                         logging.error(e)
                         
@@ -83,7 +86,8 @@ async def addToList(client, term_to_search, results_num, start_time, search_time
                             break
                     if is_in_retweet == False:
                         try:
-                            tweets_list.append(tweet)
+                            if tweet['authorId'] not in exclusion_list:
+                                tweets_list.append(tweet)
                         except Exception as e:
                             logging.error(e)
         
@@ -98,9 +102,17 @@ async def retweetTweetsList(api, retweet_time_interval):
 
     for index, tweet in enumerate(tweets_to_retweet):
         if retweets_list == []:
-            api.retweet(tweet['id'])
-            retweets_list.append(tweets_to_retweet[0])
-            await asyncio.sleep(retweet_time_interval)
+            try:
+                api.retweet(tweet['id'])
+                retweets_list.append(tweets_to_retweet[0])
+                await asyncio.sleep(retweet_time_interval)
+            except Exception as e:
+                logging.error(f'Retweet fail: {e}')
+                try:
+                    logging.info(f"Trying to save {tweet['id']} as retweeted")
+                    retweets_list.append(tweet)
+                except Exception as e:
+                    logging.error(f"Failed to save as retweeted {e}")
         else:
             is_in_retweet = False
             for retweet in retweets_list:
@@ -119,9 +131,7 @@ async def retweetTweetsList(api, retweet_time_interval):
                         logging.info(f"Trying to save {tweet['id']} as retweeted")
                         retweets_list.append(tweet)
                     except Exception as e:
-                        logging.error(f"Failed to save as retweeted {e}")
-                        
-        
+                        logging.error(f"Failed to save as retweeted {e}")       
     
     logging.info(f"tweetsList {len(tweets_list)}")
     logging.info(f'tweets_to_retweet: {len(tweets_to_retweet)}')
@@ -156,10 +166,25 @@ def logConfig():
             ]
     )
 
+def getExclusionList(file):
+    try:
+        file = open(file) 
+        lines = file.read().splitlines()
+        file.close()
+    except Exception as e:
+        print(e)
+        file.close() 
+    
+    for l in lines:
+        exclusion_list.append(int(l))
+
 def main():
     logConfig()
+    getExclusionList('exclusionlist.txt') # https://tools.codeofaninja.com/find-twitter-id
+
     api = auth.api_v1_oauth1()
     client = auth.api_v2_oauth2()
+
     term_to_search = "#bolhadev"
     results_num = 100
     clearRetweetsListHour = 19
